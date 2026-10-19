@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TradingPlatform {
+  MT4
+  MT5
+}
+
+enum PositionMode {
+  HEDGING
+  NETTING
+  UNKNOWN
+}
+
+enum AccountRole {
+  EA_SOURCE
+  SUBSCRIBER
+}
+
+enum SignalStatus {
+  CREATED
+  WAITING_CONFIRMATION
+  READY
+  SENDING
+  ACCEPTED
+  UNKNOWN
+  REJECTED
+}
+
+model TradingAccount {
+  id               String @id @default(uuid()) @db.Uuid
+  metaapiAccountId String @unique
+  platform         TradingPlatform
+  positionMode     PositionMode @default(UNKNOWN)
+  login            String
+  server           String
+  role             AccountRole
+  createdAt        DateTime @default(now())
+  eaInstances      EaInstance[]
+  subscriptions    CopySubscription[]
+
+  @@map("trading_accounts")
+}
+
+model EaInstance {
+  id          String @id @default(uuid()) @db.Uuid
+  accountId   String @db.Uuid
+  name        String
+  magic       String
+  instanceKey String @unique
+  createdAt   DateTime @default(now())
+  account     TradingAccount @relation(fields: [accountId], references: [id])
+  signals     StrategySignal[]
+  strategies  CopyStrategy[]
+
+  @@index([accountId, magic])
+  @@map("ea_instances")
+}
+
+model CopyStrategy {
+  id                 String @id @default(uuid()) @db.Uuid
+  eaInstanceId       String @db.Uuid
+  externalStrategyId String? @unique
+  name               String
+  createdAt          DateTime @default(now())
+  eaInstance         EaInstance @relation(fields: [eaInstanceId], references: [id])
+  subscriptions      CopySubscription[]
+
+  @@map("copy_strategies")
+}
+
+model CopySubscription {
+  id                  String @id @default(uuid()) @db.Uuid
+  strategyId          String @db.Uuid
+  subscriberAccountId String @db.Uuid
+  multiplier          Decimal @default(1) @db.Decimal(18, 8)
+  desiredEnabled      Boolean @default(false)
+  strategy            CopyStrategy @relation(fields: [strategyId], references: [id])
+  subscriber          TradingAccount @relation(fields: [subscriberAccountId], references: [id])
+
+  @@unique([strategyId, subscriberAccountId])
+  @@map("copy_subscriptions")
+}
+
+model StrategySignal {
+  id              String @id @default(uuid()) @db.Uuid
+  eaInstanceId    String @db.Uuid
+  sourceEventId   String @unique
+  symbol          String
+  action          String
+  requestedVolume Decimal @db.Decimal(18, 8)
+  confirmedVolume Decimal? @db.Decimal(18, 8)
+  status          SignalStatus @default(CREATED)
+  createdAt       DateTime @default(now())
+  eaInstance      EaInstance @relation(fields: [eaInstanceId], references: [id])
+
+  @@index([eaInstanceId, createdAt])
+  @@map("strategy_signals")
+}
