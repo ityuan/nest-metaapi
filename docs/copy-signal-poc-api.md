@@ -46,3 +46,33 @@ curl -X POST \
 ## 后续实施条件
 
 接下来需增加 EA Bridge 事件、Broker Deal 持久化、Broker Order ID/Deal ID 的精确关联、重复事件幂等存储与 Netting 虚拟仓位算法。只有确认这些行为后，才进入 CopyFactory External Signals Demo 验证。
+
+
+### Broker 成交与 EA 事件精确关联
+
+请求 `POST /api/v1/poc/accounts/:accountId/link-executions`，HTTP Header 同样使用 `x-poc-admin-key`。
+
+```json
+{
+  "from": "2026-10-18T00:00:00Z",
+  "to": "2026-10-18T01:00:00Z",
+  "events": [
+    {
+      "eventId": "ea-1001-req-001",
+      "eaInstanceId": "ea-gold-a",
+      "brokerOrderId": "46201068",
+      "magic": "1001",
+      "symbol": "XAUUSD"
+    }
+  ]
+}
+```
+
+关联结果为 `CONFIRMED`、`AMBIGUOUS`、`UNMATCHED` 或 `CANDIDATE_ONLY`。
+
+- `CONFIRMED`：成交/订单 ID、品种、Magic 一致，且本批事件没有竞争关联。**仅表示来源关联，尚不代表虚拟仓位或真实跟单已完成。**
+- `AMBIGUOUS`：存在竞争引用或 Magic 不一致，停止自动处理。
+- `UNMATCHED`：Broker 还未返回所引用的成交，后续应重新对账。
+- `CANDIDATE_ONLY`：没有 Broker ID，仅保留候选，不得推送 CopyFactory。
+
+当前关联只在单次请求内检查竞争，不具备跨批次幂等持久化。后续必须用数据库对来源事件和 Broker Deal 建立唯一约束。
