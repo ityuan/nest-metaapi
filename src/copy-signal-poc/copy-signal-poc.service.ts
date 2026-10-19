@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { BrokerDealView, MetaApiReadService } from './metaapi-read.service';
+import { EaExecutionEvent, linkExecutionEvents } from './deal-linker';
 
 export type AttributionStatus = 'MATCHED' | 'AMBIGUOUS' | 'UNATTRIBUTED';
 
@@ -43,6 +44,20 @@ export function attributeDeals(deals: BrokerDealView[], rules: EaRule[]): Attrib
 @Injectable()
 export class CopySignalPocService {
   constructor(private readonly metaapi: MetaApiReadService) {}
+
+  async linkExecutions(accountId: string, from: string, to: string, events: EaExecutionEvent[]) {
+    const start = new Date(from);
+    const end = new Date(to);
+    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
+      throw new BadRequestException('时间区间必须使用 ISO 8601 格式');
+    }
+    const deals = await this.metaapi.listDeals(accountId, start, end);
+    return {
+      accountId, totalDeals: deals.length,
+      results: linkExecutionEvents(events, deals),
+      warning: '精确关联仅为历史成交核验，未写入仓位账本，也未向 CopyFactory 发单',
+    };
+  }
 
   async getAccount(accountId: string) {
     return this.metaapi.getAccount(accountId);
