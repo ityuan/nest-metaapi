@@ -74,4 +74,8 @@ pnpm prisma:migrate
 - 对来源不明确或执行结果未知的信号，先对账再重试，避免重复跟单。
 - 当前仓库可能是公开仓库，请在接入真实凭证前检查 GitHub 的访问权限。
 
-详细技术验证计划见 [Phase 0：Netting 外部信号跟单验证](docs/phase-0-poc.md)。
+## 六、项目总体实施依据
+
+**[项目总体方案与实施计划（完整中文方案）](docs/项目总体方案与实施计划.md)**：包含业务范围、系统架构、数据模型、NestJS 模块、接口规划、Netting 交易归属、安全规范、五阶段实施路线和验收标准。后续开发以此为主要实施基线。
+
+专项文档：[Phase 0：Netting 外部信号跟单验证](docs/phase-0-poc.md)；[CopySignalPoC API](docs/copy-signal-poc-api.md)。
